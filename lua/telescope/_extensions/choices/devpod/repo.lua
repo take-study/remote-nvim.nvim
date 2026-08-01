@@ -2,28 +2,44 @@
 local remote_nvim = require("remote-nvim")
 
 local function repo_action(_)
-  local git_uri = vim.fn.input("Git URI: ")
-  if git_uri == "" then
-    return
+  local co = coroutine.running()
+
+  vim.ui.input({ prompt = "Git URI: " }, function(git_uri)
+    vim.schedule(function()
+      git_uri = vim.trim(git_uri or "")
+      if git_uri == "" then
+        if co then
+          coroutine.resume(co)
+        end
+        return
+      end
+      git_uri = git_uri:gsub("/$", "")
+
+      local uri_components = vim.split(git_uri, "/", { trimempty = true })
+
+      remote_nvim.session_provider
+        :get_or_initialize_session({
+          host = git_uri,
+          provider_type = "devpod",
+          unique_host_id = ("%s-remote"):format(uri_components[#uri_components]),
+          devpod_opts = {
+            provider = "docker",
+            source_opts = {
+              type = "repo",
+              id = git_uri,
+            },
+          },
+        })
+        :launch_neovim()
+      if co then
+        coroutine.resume(co)
+      end
+    end)
+  end)
+
+  if co then
+    coroutine.yield()
   end
-  git_uri = git_uri:gsub("/$", "")
-
-  local uri_components = vim.split(git_uri, "/", { trimempty = true })
-
-  remote_nvim.session_provider
-    :get_or_initialize_session({
-      host = git_uri,
-      provider_type = "devpod",
-      unique_host_id = ("%s-remote"):format(uri_components[#uri_components]),
-      devpod_opts = {
-        provider = "docker",
-        source_opts = {
-          type = "repo",
-          id = git_uri,
-        },
-      },
-    })
-    :launch_neovim()
 end
 
 return {

@@ -350,7 +350,7 @@ function Provider:_get_remote_os_and_arch()
       })
 
       if self._remote_os == "some other OS (e.g. FreeBSD, NetBSD, etc)" then
-        self._remote_os = vim.fn.input("Please enter your OS name: ")
+        self._remote_os = provider_utils.get_input("Please enter your OS name: ")
       end
     end
   end

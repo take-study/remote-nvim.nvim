@@ -1,17 +1,27 @@
 local M = {}
 
----Get user input
+---Get user input using vim.ui.input (async, coroutine-friendly)
 ---@param input_label string Label for the input box
 ---@param input_type prompt_type? What kind of value would be typed as input
----@return string response User response
+---@return string|nil response User response (nil if cancelled)
 function M.get_input(input_label, input_type)
   input_type = input_type or "plain"
+  local co = coroutine.running()
+  local response = nil
 
-  if input_type == "secret" then
-    return vim.fn.inputsecret(input_label)
-  else
-    return vim.fn.input(input_label)
+  vim.schedule(function()
+    vim.ui.input({ prompt = input_label }, function(input)
+      response = input or ""
+      if co then
+        coroutine.resume(co)
+      end
+    end)
+  end)
+
+  if co then
+    coroutine.yield()
   end
+  return response
 end
 
 ---Get selection handling coroutines

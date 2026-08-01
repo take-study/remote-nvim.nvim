@@ -120,24 +120,28 @@ end
 ---@param prompt remote-nvim.config.PluginConfig.SSHConfig.SSHPrompt
 function SSHExecutor:_process_prompt(prompt)
   self._job_stdout_processed_idx = #self._job_stdout
-  local prompt_response
 
   -- If it is a "static" value prompt, use cached input values, unless values were passed in config
   -- If prompt's value would not change during the session ("static"), use cached values unless they are unset (denoted
   -- by "" string)
   if prompt.value_type == "static" and prompt.value ~= "" then
-    prompt_response = prompt.value
+    vim.api.nvim_chan_send(self._job_id, prompt.value .. "\n")
   else
     local job_output = self:job_stdout()
     local label = prompt.input_prompt or ("%s "):format(job_output[#job_output])
-    prompt_response = require("remote-nvim.providers.utils").get_input(label, prompt.type)
 
-    -- Saving these prompt responses is handle in the job exit handler
-    if prompt.value_type == "static" then
-      self._job_prompt_responses[prompt.match] = prompt_response
-    end
+    -- Use vim.ui.input (async) to get user input, then send it to the job
+    vim.ui.input({ prompt = label }, function(input)
+      if input == nil then
+        input = ""
+      end
+      -- Saving these prompt responses is handled in the job exit handler
+      if prompt.value_type == "static" then
+        self._job_prompt_responses[prompt.match] = input
+      end
+      vim.api.nvim_chan_send(self._job_id, input .. "\n")
+    end)
   end
-  vim.api.nvim_chan_send(self._job_id, prompt_response .. "\n")
 end
 
 ---@private

@@ -2,34 +2,57 @@
 local remote_nvim = require("remote-nvim")
 
 local function commit_action(_)
-  local git_uri = vim.fn.input("Git URI: ")
-  if git_uri == "" then
-    return
+  local co = coroutine.running()
+
+  vim.ui.input({ prompt = "Git URI: " }, function(git_uri)
+    vim.schedule(function()
+      git_uri = vim.trim(git_uri or "")
+      if git_uri == "" then
+        if co then
+          coroutine.resume(co)
+        end
+        return
+      end
+      git_uri = git_uri:gsub("/$", "")
+
+      vim.ui.input({ prompt = "Commit: " }, function(commit)
+        vim.schedule(function()
+          commit = vim.trim(commit or "")
+          if commit == "" then
+            if co then
+              coroutine.resume(co)
+            end
+            return
+          end
+
+          local uri_components = vim.split(git_uri, "/", { trimempty = true })
+
+          remote_nvim.session_provider
+            :get_or_initialize_session({
+              host = ("%s@sha256:%s"):format(git_uri, commit),
+              provider_type = "devpod",
+              unique_host_id = ("%s-%s"):format(uri_components[#uri_components], commit),
+              devpod_opts = {
+                provider = "docker",
+                source_opts = {
+                  type = "commit",
+                  id = commit,
+                  name = git_uri,
+                },
+              },
+            })
+            :launch_neovim()
+          if co then
+            coroutine.resume(co)
+          end
+        end)
+      end)
+    end)
+  end)
+
+  if co then
+    coroutine.yield()
   end
-  git_uri = git_uri:gsub("/$", "")
-
-  local commit = vim.fn.input("Commit: ")
-  if commit == "" then
-    return
-  end
-
-  local uri_components = vim.split(git_uri, "/", { trimempty = true })
-
-  remote_nvim.session_provider
-    :get_or_initialize_session({
-      host = ("%s@sha256:%s"):format(git_uri, commit),
-      provider_type = "devpod",
-      unique_host_id = ("%s-%s"):format(uri_components[#uri_components], commit),
-      devpod_opts = {
-        provider = "docker",
-        source_opts = {
-          type = "commit",
-          id = commit,
-          name = git_uri,
-        },
-      },
-    })
-    :launch_neovim()
 end
 
 return {

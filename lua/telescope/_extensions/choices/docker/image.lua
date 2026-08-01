@@ -3,24 +3,40 @@ local remote_nvim = require("remote-nvim")
 local ps = require("remote-nvim.utils").plain_substitute
 
 local function image_action(_)
-  local image = vim.fn.input("Image: ")
-  if image == "" then
-    return
+  local co = coroutine.running()
+
+  vim.ui.input({ prompt = "Image: " }, function(image)
+    vim.schedule(function()
+      image = vim.trim(image or "")
+      if image == "" then
+        if co then
+          coroutine.resume(co)
+        end
+        return
+      end
+      remote_nvim.session_provider
+        :get_or_initialize_session({
+          host = image,
+          provider_type = "devpod",
+          unique_host_id = ps(image, ":", "-"),
+          devpod_opts = {
+            provider = "docker",
+            source_opts = {
+              type = "image",
+              id = image,
+            },
+          },
+        })
+        :launch_neovim()
+      if co then
+        coroutine.resume(co)
+      end
+    end)
+  end)
+
+  if co then
+    coroutine.yield()
   end
-  remote_nvim.session_provider
-    :get_or_initialize_session({
-      host = image,
-      provider_type = "devpod",
-      unique_host_id = ps(image, ":", "-"),
-      devpod_opts = {
-        provider = "docker",
-        source_opts = {
-          type = "image",
-          id = image,
-        },
-      },
-    })
-    :launch_neovim()
 end
 
 return {
