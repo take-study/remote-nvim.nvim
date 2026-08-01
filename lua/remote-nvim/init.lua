@@ -86,6 +86,7 @@ local utils = require("remote-nvim.utils")
 ---@field progress_view remote-nvim.config.PluginConfig.ProgressViewConfig Progress view configuration
 ---@field local_client_config remote-nvim.config.RemoteConfig.LocalClientConfig? Configuration for the local client
 ---@field client_callback function<string, remote-nvim.providers.WorkspaceConfig> Function that would be called upon to start a Neovim client
+---@field on_remote_exit fun(port: string?, workspace_config: remote-nvim.providers.WorkspaceConfig)? Callback fired in the local Neovim when the remote session exits
 ---@field offline_mode remote-nvim.config.PluginConfig.OfflineModeConfig Offline mode configuration
 ---@field log remote-nvim.config.PluginConfig.LogConfig Plugin logging options
 
@@ -187,6 +188,7 @@ M.default_opts = {
       end
     end)
   end,
+  on_remote_exit = nil,
   neovim_install_script_path = utils.path_join(
     utils.is_windows,
     utils.get_plugin_root(),

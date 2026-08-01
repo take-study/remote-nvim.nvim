@@ -759,6 +759,14 @@ function Provider:_launch_remote_neovim_server()
               self:stop_neovim()
             end
 
+            -- Fire on_remote_exit callback if configured
+            if remote_nvim.config.on_remote_exit then
+              remote_nvim.config.on_remote_exit(
+                self._local_free_port,
+                self._config_provider:get_workspace_config(self.unique_host_id)
+              )
+            end
+
             self:_reset()
           end
         end
